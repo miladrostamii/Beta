@@ -1,0 +1,320 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>محاسبه‌گر بتا</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  padding:20px 12px;
+  background:#080e19;
+  color:#fff;
+  font-family:Tahoma,Arial,sans-serif;
+}
+.app{
+  max-width:520px;
+  margin:auto;
+  background:#0b1220;
+  border-radius:18px;
+  padding:16px;
+  display:grid;
+  gap:12px;
+}
+h1{
+  font-size:22px;
+  text-align:center;
+  margin:0;
+}
+.row{
+  display:flex;
+  gap:8px;
+}
+button{
+  flex:1;
+  border:0;
+  border-radius:9px;
+  padding:11px 8px;
+  background:#1b2940;
+  color:#fff;
+  font:inherit;
+  cursor:pointer;
+}
+button.active{background:#159957}
+.tabs button.active{
+  background:#fff;
+  color:#0b1220;
+}
+label{
+  font-size:13px;
+  font-weight:bold;
+}
+input{
+  width:100%;
+  padding:13px;
+  border:1px solid #34445c;
+  border-radius:9px;
+  background:#fff;
+  color:#111;
+  font:18px Tahoma,Arial;
+}
+#termsInstall{
+  margin-top:12px;
+  gap:12px;
+}
+#installResults{
+  margin-top:12px;
+}
+#buyResults{
+  margin-top:12px;
+}
+.result{
+  background:#1b2940;
+  border-radius:9px;
+  padding:5px 12px;
+}
+.result-label{
+  font-size:12px;
+  color:#c3cedb;
+  margin-bottom:6px;
+}
+.result-value{
+  direction:ltr;
+  text-align:left;
+  color:#42e39b;
+  font-size:23px;
+  font-weight:bold;
+  overflow-wrap:anywhere;
+}
+.unit{
+  text-align:right;
+  color:#aab5c1;
+  font-size:11px;
+  margin-top:3px;
+}
+.results{
+  display:grid;
+  gap:8px;
+}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<main class="app">
+
+<h1>محاسبه‌گر بتا</h1>
+
+<div class="row tabs">
+  <button id="buyTab">توان خرید</button>
+  <button id="installTab" class="active">محاسبه اقساط</button>
+</div>
+
+<div class="row">
+  <button id="rate58" class="active">حضوری</button>
+  <button id="rate6">غیرحضوری</button>
+  <button id="half">نیم ماه</button>
+</div>
+
+<section id="installPanel">
+
+  <label for="amount">مبلغ خرید مشتری (ریال)</label>
+  <input id="amount" inputmode="numeric"
+         placeholder="مبلغ را وارد کنید">
+
+  <div class="row" id="termsInstall">
+    <button data-month="12" class="active">12</button>
+    <button data-month="18">18</button>
+    <button data-month="24">24</button>
+    <button data-month="36">36</button>
+  </div>
+
+  <div class="results" id="installResults"></div>
+
+</section>
+
+<section id="buyPanel" class="hidden">
+
+  <label for="capacity">مبلغ اعتبار بتا (ریال)</label>
+  <input id="capacity" inputmode="numeric"
+         placeholder="مبلغ را وارد کنید">
+
+  <div class="results" id="buyResults"></div>
+
+</section>
+
+</main>
+
+<script>
+
+const $ = id => document.getElementById(id);
+
+let tab = "install";
+let rate = 5.8;
+let half = false;
+let months = 12;
+
+const parse = v =>
+  Number(String(v).replace(/,/g,"")) || 0;
+
+const fmt = n =>
+  Math.round(n).toLocaleString("en-US");
+
+const money = v => {
+  const d = String(v).replace(/\D/g,"");
+  return d ? Number(d).toLocaleString("en-US") : "";
+};
+
+function setTab(t){
+
+  tab = t;
+
+  $("installPanel").classList.toggle(
+    "hidden", t !== "install"
+  );
+
+  $("buyPanel").classList.toggle(
+    "hidden", t !== "buy"
+  );
+
+  $("installTab").classList.toggle(
+    "active", t === "install"
+  );
+
+  $("buyTab").classList.toggle(
+    "active", t === "buy"
+  );
+
+  render();
+}
+
+function result(label,value,valid){
+
+  return `
+    <div class="result">
+      <div class="result-label">${label}</div>
+      <div class="result-value">
+        ${valid ? fmt(value) : "—"}
+      </div>
+      <div class="unit">ریال</div>
+    </div>
+  `;
+}
+
+function render(){
+
+  $("rate58").classList.toggle(
+    "active", rate === 5.8
+  );
+
+  $("rate6").classList.toggle(
+    "active", rate === 6
+  );
+
+  $("half").classList.toggle(
+    "active", half
+  );
+
+  $("termsInstall").querySelectorAll("button")
+    .forEach(b => {
+      b.classList.toggle(
+        "active",
+        Number(b.dataset.month) === months
+      );
+    });
+
+  if(tab === "install"){
+
+    const p = parse($("amount").value);
+    const term = months + (half ? 0.5 : 0);
+
+    const total = p * (1 + rate * term / 100);
+    const exact = total / months;
+
+    const rounded =
+      Math.round(exact / 100000) * 100000;
+
+    const bank = rounded * months;
+
+    $("installResults").innerHTML =
+
+      result("مبلغ کل با سود",total,p > 0) +
+      result("قسط دقیق",exact,p > 0) +
+      result("قسط رُندشده",rounded,p > 0) +
+      result("مبلغ ثبتی در بانک",bank,p > 0);
+
+  }else{
+
+    const m = parse($("capacity").value);
+
+    $("buyResults").innerHTML =
+      [12,18,24,36].map(n => {
+
+        const value = Math.floor(
+          (m * n /
+          (1 + rate * (n + (half ? 0.5 : 0)) / 100))
+          / 1000000
+        ) * 1000000;
+
+        return result(
+          `${n} ماهه`,
+          value,
+          m > 0
+        );
+
+      }).join("");
+  }
+}
+
+$("buyTab").addEventListener(
+  "click", () => setTab("buy")
+);
+
+$("installTab").addEventListener(
+  "click", () => setTab("install")
+);
+
+$("rate58").addEventListener("click",()=>{
+  rate = 5.8;
+  render();
+});
+
+$("rate6").addEventListener("click",()=>{
+  rate = 6;
+  render();
+});
+
+$("half").addEventListener("click",()=>{
+  half = !half;
+  render();
+});
+
+$("termsInstall").addEventListener("click",e=>{
+  const btn = e.target.closest("[data-month]");
+  if(!btn) return;
+
+  months = Number(btn.dataset.month);
+  render();
+});
+
+$("amount").addEventListener("input",e=>{
+  e.target.value = money(e.target.value);
+  render();
+});
+
+$("capacity").addEventListener("input",e=>{
+  e.target.value = money(e.target.value);
+  render();
+});
+
+render();
+
+</script>
+
+</body>
+</html>
